@@ -7,13 +7,13 @@ function Clo {
     [void] (Invoke-Expression("chcp 65001"))
     $OFS = "`n"
     $a = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/+="
+    $f = (gl).path+'\'+ $f;$c = (gl).path+'\'+ $c;$o = (gl).path+'\'+ $o
     if ($f -and (Test-Path $f)) {
-        if ($f.IndexOf("\") -lt 0) { $f = $f }
         $b = [Convert]::ToBase64String([IO.File]::ReadAllBytes($f))
         try {
             $ca = Get-Content $c -Encoding UTF8
         } catch {
-            Write-Host "ReadErP"
+            Write-Host "ReadEr"
             return
         }
         if ($o) {
@@ -23,13 +23,12 @@ function Clo {
                 $sb.Remove($sb.Length - 1, 1)
                 Out-File -FilePath $o -InputObject $sb.ToString() -Encoding UTF8
             } catch {
-                Write-Host "ErrWr '$o'."
-                Write-Host $_.Exception.Message
+                Write-Host "ErWr"
             }
         } else {
             $b.ToCharArray() | ForEach-Object { Write-Host $ca[$a.IndexOf($_)] }
         }
     } else {
-        Write-Host "oops"
+        Write-Host "F"
     }
 }
