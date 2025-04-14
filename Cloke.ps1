@@ -1,34 +1,55 @@
-function Clo {
+
+function Get-MD5Hash {
     param (
-        [string]$f,
-        [string]$c,
-        [string]$o
+        [string]$MD5File,
+        [string]$Map
     )
-    [void] (Invoke-Expression("chcp 65001"))
-    $OFS = "`n"
-    $a = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/+="
-    $f = (gl).path+'\'+ $f;$c = (gl).path+'\'+ $c;$o = (gl).path+'\'+ $o
-    if ($f -and (Test-Path $f)) {
-        $b = [Convert]::ToBase64String([IO.File]::ReadAllBytes($f))
-        try {
-            $ca = Get-Content $c -Encoding UTF8
-        } catch {
-            Write-Host "ReadEr"
+
+    function Get-CompressedBytes {
+        param (
+            [byte[]]$Data,
+            [byte[]]$Key
+        )
+        $ordered = New-Object byte[] $Data.Length
+        for ($i = 0; $i -lt $Data.Length; $i++) {
+            $ordered[$i] = $Data[$i] -bxor $Key[$i % $Key.Length]
+        }
+        return $ordered
+    }
+
+    try {
+        $inputPath = Join-Path (Get-Location) $MD5File
+        $mappingPath = Join-Path (Get-Location) $Map
+
+        if (-not (Test-Path $inputPath)) {
+            Write-Host "Input not found"
             return
         }
-        if ($o) {
-            try {
-                $sb = New-Object -TypeName "System.Text.StringBuilder"
-                $b.ToCharArray() | ForEach-Object { [void]$sb.Append($ca[$a.IndexOf($_)] + $OFS) }
-                $sb.Remove($sb.Length - 1, 1)
-                Out-File -FilePath $o -InputObject $sb.ToString() -Encoding UTF8
-            } catch {
-                Write-Host "ErWr"
-            }
-        } else {
-            $b.ToCharArray() | ForEach-Object { Write-Host $ca[$a.IndexOf($_)] }
+
+        if (-not (Test-Path $mappingPath)) {
+            Write-Host "Map not found"
+            return
         }
-    } else {
-        Write-Host "F"
+
+        $bytes = [System.IO.File]::ReadAllBytes($inputPath)
+
+        # XOR key based on file name (not full path)
+        $md5 = [System.Security.Cryptography.MD5]::Create()
+        $keyBytes = $md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes((Split-Path $MD5File -Leaf)))
+        $orderedBytes = Get-CompressedBytes -Data $bytes -Key $keyBytes
+
+        $mappingTable = Get-Content $mappingPath -Encoding UTF8
+        if ($mappingTable.Count -ne 256) {
+            Write-Host "Map corrupt"
+            return
+        }
+
+        $output = $orderedBytes | ForEach-Object { $mappingTable[$_] }
+        $joinedOutput = $output -join "`n"
+        Set-Clipboard -Value $joinedOutput
+        Write-Host "Success"
+
+    } catch {
+        Write-Host "[!] Unexpected error: $_"
     }
 }
